@@ -8,21 +8,13 @@ using namespace nb::literals;
 
 NB_MODULE(_core_ext, pymodule)
 {
-    pymodule.def(
-        "ik",
-        franka_IK_EE,
-        "target_transform"_a,
-        "q7"_a,
-        "q_actual"_a,
-        "Position IK for Franka EE."
-        );
+    pymodule.def("ik", ik_wrapper, "target_transform"_a, "q7"_a, "q_actual"_a, "Position IK for Franka EE.");
 
     pymodule.def(
         "cc_ik",
-        franka_IK_EE_CC,
+        Franka<double>::cc_ik,
         "target_transform"_a,
         "q7"_a,
         "q_actual"_a,
-        "Case-consistent position IK for Franka EE (i.e., avoids elbow flips)."
-        );
+        "Case-consistent position IK for Franka EE (i.e., avoids elbow flips).");
 }

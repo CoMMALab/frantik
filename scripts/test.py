@@ -63,14 +63,12 @@ def main():
 
         se3 = se3_from_pos_xyzw(position, xyzw)
         input_mat = se3.flatten(order = 'F').tolist()
-        configs = frantik.ik(input_mat, np.radians(q_slide.value), curr_config.tolist())
+        config = frantik.cc_ik(input_mat, np.radians(q_slide.value), curr_config.tolist())
 
-        for config in configs:
-            if all(map(lambda c: c == c, config)):
-                c = np.array(config)
-                panda.update_cfg(c)
-                curr_config = c
-                break
+        if all(map(lambda c: c == c, config)):
+            c = np.array(config)
+            panda.update_cfg(c)
+            curr_config = c
 
     sliders = [q_slide, x_slide, y_slide, z_slide, r_slide, t_slide, p_slide]
     for slider in sliders:
