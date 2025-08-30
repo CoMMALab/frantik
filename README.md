@@ -16,7 +16,12 @@ The solver is modified from [franka_analytic_ik](https://github.com/ffall007/fra
 
 ## Installation
 
-Simply clone the repository and pip install:
+Simply pip install:
+```bash
+pip install frantik
+```
+
+You can also clone the repository and pip install:
 ```bash
 git clone git@github.com:CoMMALab/frantik.git
 cd frantik
