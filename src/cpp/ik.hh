@@ -48,11 +48,9 @@ struct Franka
     static constexpr FloatT NEAR_ONE = 0.999;
 
     static auto
-    ik(const std::array<FloatT, 16> &O_T_EE_array, FloatT q7, const Array &q_actual_array) noexcept -> Array4
+    ik(const Eigen::Ref<const Matrix4x4> &O_T_EE, FloatT q7, const FloatT *q_actual_array) noexcept -> Array4
     {
         Array4 q_all = q_all_NAN;
-
-        const Eigen::Map<const Matrix4x4> O_T_EE(O_T_EE_array.data());
 
         if (q7 <= q_min[6] or q7 >= q_max[6])
         {
@@ -234,7 +232,7 @@ struct Franka
         return q_all;
     }
 
-    inline static auto fk(const Array &q_actual_array) noexcept -> std::array<Matrix4x4, 7>
+    inline static auto fk(const FloatT *q_actual_array) noexcept -> std::array<Matrix4x4, 7>
     {
         std::array<FloatT, 6> c, s;
         for (auto i = 0U; i < 6; ++i)
@@ -287,11 +285,10 @@ struct Franka
     }
 
     static auto
-    cc_ik(const std::array<FloatT, 16> &O_T_EE_array, FloatT q7, const Array &q_actual_array) noexcept
+    cc_ik(const Eigen::Ref<const Matrix4x4> &O_T_EE, FloatT q7, const FloatT *q_actual_array) noexcept
         -> Array
     {
         std::array<FloatT, 7> q;
-        const Eigen::Map<const Matrix4x4> O_T_EE(O_T_EE_array.data());
 
         // return NAN if input q7 is out of range
         if (q7 <= q_min[6] or q7 >= q_max[6])
