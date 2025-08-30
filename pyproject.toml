@@ -1,0 +1,23 @@
+[build-system]
+requires = ["scikit-build-core >=0.4.3", "nanobind >=2.0.0", "cmake >=3.1", "typing_extensions"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "frantik"
+version = "0.1"
+description = "Analytic Franka IK"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "Zachary Kingston", email = "zkingston@purdue.edu" },
+]
+classifiers = [
+]
+dependencies = ["numpy"]
+
+[tool.scikit-build]
+minimum-version = "0.4"
+build-dir = "build/{wheel_tag}"
+wheel.py-api = "cp312"
+cmake.build-type = "Release"
+wheel.packages = ["src/frantik"]
