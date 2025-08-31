@@ -62,7 +62,8 @@ def main():
         axes.wxyz = R.from_euler('XYZ', rpy, True).as_quat(scalar_first = True)
 
         se3 = se3_from_pos_xyzw(position, xyzw)
-        config = frantik.cc_ik(se3, np.radians(q_slide.value), curr_config)
+
+        config = frantik.cc_ik(se3, q_slide.value, curr_config)
 
         if all(map(lambda c: c == c, config)):
             c = np.array(config)

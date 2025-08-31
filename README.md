@@ -33,9 +33,13 @@ To install on Ubuntu 22.04, `sudo apt install libeigen3-dev`.
 
 ## Usage Notes
 
-This module provides two functions:
+This module provides four functions:
 - `ik(tf, q7, qc)` which takes as input the target frame (a 4x4 TF matrix), the desired value of joint 7 in radians, and the current configuration of the robot. It returns all four solutions (if they exist) to the IK problem.
 - `cc_ik(tf, q7, qc)` which takes in the same input as above, but only returns the solution closest to the current configuration.
+
+And variants which search for joint 7 values by checking at discretized angles:
+- `ik7(tf, qc)` which, same as above, but searches for the nearest joint 7 value that is feasible.
+- `cc_ik7(tf, qc)` same as above but with joint 7 search.
 
 Note that the functions take numpy arrays as input.
 

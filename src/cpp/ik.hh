@@ -33,22 +33,22 @@ struct Franka
     static constexpr FloatT a4 = 0.0825;
     static constexpr FloatT a7 = 0.0880;
 
-    static constexpr FloatT LL24 = a4 * a4 + d3 * d3;
-    static constexpr FloatT LL46 = a4 * a4 + d5 * d5;
-    static constexpr FloatT L24 = std::sqrt(LL24);
-    static constexpr FloatT L46 = std::sqrt(LL46);
+    static constexpr FloatT LL24 = 0.10666225;     // a4 * a4 + d3 * d3;
+    static constexpr FloatT LL46 = 0.15426225;     // a4 * a4 + d5 * d5;
+    static constexpr FloatT L24 = 0.326591870689;  // std::sqrt(LL24)
+    static constexpr FloatT L46 = 0.392762332715;  // std::sqrt(LL46)
 
-    static constexpr FloatT thetaH46 = std::atan(d5 / a4);
-    static constexpr FloatT theta342 = std::atan(d3 / a4);
-    static constexpr FloatT theta46H = M_PI / 2 - std::atan(d5 / a4);
+    static constexpr FloatT thetaH46 = 1.35916951803;   // std::atan(d5 / a4);
+    static constexpr FloatT theta342 = 1.31542071191;   // std::atan(d3 / a4);
+    static constexpr FloatT theta46H = 0.211626808766;  // M_PI / 2 - std::atan(d5 / a4); (inverse cotangent)
 
     static constexpr Array q_min = {-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973};
     static constexpr Array q_max = {2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973};
 
     static constexpr FloatT NEAR_ONE = 0.999;
+    static constexpr FloatT SEARCH_STEP = M_PI / 512.0;
 
-    static auto
-    ik(const Eigen::Ref<const Matrix4x4> &O_T_EE, FloatT q7, const FloatT *q_actual_array) noexcept -> Array4
+    static auto ik(const Eigen::Ref<const Matrix4x4> &tf, FloatT q7, const FloatT *q_c) noexcept -> Array4
     {
         Array4 q_all = q_all_NAN;
 
@@ -63,9 +63,9 @@ struct Franka
         }
 
         // compute p_6
-        const Matrix3x3 R_EE = O_T_EE.template topLeftCorner<3, 3>();
-        const Vector3 z_EE = O_T_EE.template block<3, 1>(0, 2);
-        const Vector3 p_EE = O_T_EE.template block<3, 1>(0, 3);
+        const Matrix3x3 R_EE = tf.template topLeftCorner<3, 3>();
+        const Vector3 z_EE = tf.template block<3, 1>(0, 2);
+        const Vector3 p_EE = tf.template block<3, 1>(0, 3);
         const Vector3 p_7 = p_EE - d7e * z_EE;
 
         const Vector3 x_EE_6(std::cos(q7 - M_PI_4), -std::sin(q7 - M_PI_4), 0.0);
@@ -164,9 +164,9 @@ struct Franka
 
             if (std::fabs(V2P[2] / L2P) > NEAR_ONE)
             {
-                q_all[2 * i][0] = q_actual_array[0];
+                q_all[2 * i][0] = q_c[0];
                 q_all[2 * i][1] = 0.0;
-                q_all[2 * i + 1][0] = q_actual_array[0];
+                q_all[2 * i + 1][0] = q_c[0];
                 q_all[2 * i + 1][1] = 0.0;
             }
             else
@@ -232,13 +232,13 @@ struct Franka
         return q_all;
     }
 
-    inline static auto fk(const FloatT *q_actual_array) noexcept -> std::array<Matrix4x4, 7>
+    inline static auto fk(const FloatT *q_c) noexcept -> std::array<Matrix4x4, 7>
     {
         std::array<FloatT, 6> c, s;
         for (auto i = 0U; i < 6; ++i)
         {
-            c[i] = std::cos(q_actual_array[i]);
-            s[i] = std::sin(q_actual_array[i]);
+            c[i] = std::cos(q_c[i]);
+            s[i] = std::sin(q_c[i]);
         }
 
         std::array<Matrix4x4, 7> As_a;
@@ -284,9 +284,7 @@ struct Franka
         return Ts_a;
     }
 
-    static auto
-    cc_ik(const Eigen::Ref<const Matrix4x4> &O_T_EE, FloatT q7, const FloatT *q_actual_array) noexcept
-        -> Array
+    static auto cc_ik(const Eigen::Ref<const Matrix4x4> &tf, FloatT q7, const FloatT *q_c) noexcept -> Array
     {
         std::array<FloatT, 7> q;
 
@@ -298,7 +296,7 @@ struct Franka
 
         q[6] = q7;
 
-        auto Ts_a = fk(q_actual_array);
+        auto Ts_a = fk(q_c);
 
         // identify q6 case
         const Vector3 V62_a = Ts_a[1].template block<3, 1>(0, 3) - Ts_a[6].template block<3, 1>(0, 3);
@@ -307,12 +305,12 @@ struct Franka
         bool is_case6_0 = ((V6H_a.cross(V62_a)).transpose() * Z6_a <= 0);
 
         // identify q1 case
-        bool is_case1_1 = (q_actual_array[1] < 0);
+        bool is_case1_1 = (q_c[1] < 0);
 
         // IK: compute p_6
-        const Matrix3x3 R_EE = O_T_EE.template topLeftCorner<3, 3>();
-        const Vector3 z_EE = O_T_EE.template block<3, 1>(0, 2);
-        const Vector3 p_EE = O_T_EE.template block<3, 1>(0, 3);
+        const Matrix3x3 R_EE = tf.template topLeftCorner<3, 3>();
+        const Vector3 z_EE = tf.template block<3, 1>(0, 2);
+        const Vector3 p_EE = tf.template block<3, 1>(0, 3);
         const Vector3 p_7 = p_EE - d7e * z_EE;
 
         const Vector3 x_EE_6(std::cos(q7 - M_PI_4), -std::sin(q7 - M_PI_4), 0.0);
@@ -390,7 +388,7 @@ struct Franka
 
         if (std::fabs(V2P[2] / L2P) > NEAR_ONE)
         {
-            q[0] = q_actual_array[0];
+            q[0] = q_c[0];
             q[1] = 0.0;
         }
         else
@@ -449,5 +447,93 @@ struct Franka
         }
 
         return q;
+    }
+
+    // Check if upper joint value is finite (i.e., IK was successful)
+    static auto valid_qa(const Array4 &array) -> bool
+    {
+        return std::isfinite(array[0][5])     //
+               or std::isfinite(array[1][5])  //
+               or std::isfinite(array[2][5])  //
+               or std::isfinite(array[3][5]);
+    }
+
+    static auto valid_q(const Array &array) -> bool
+    {
+        return std::isfinite(array[5]);
+    }
+
+    static auto ik_q7(const Eigen::Ref<const Matrix4x4> &tf, const FloatT *q_c) -> Array4
+    {
+        const FloatT start_q7 = q_c[6];
+        Array4 result = ik(tf, start_q7, q_c);
+        if (valid_qa(result))
+        {
+            return result;
+        }
+
+        auto n_steps = std::max(q_max[6] - start_q7, start_q7 - q_min[6]) / SEARCH_STEP;
+        for (auto i = 0U; i < n_steps; ++i)
+        {
+            const FloatT step = SEARCH_STEP * i;
+            const FloatT pos = start_q7 + step;
+            if (pos <= q_max[6])
+            {
+                result = ik(tf, pos, q_c);
+                if (valid_qa(result))
+                {
+                    break;
+                }
+            }
+
+            const FloatT neg = start_q7 - step;
+            if (neg >= q_min[6])
+            {
+                result = ik(tf, pos, q_c);
+                if (valid_qa(result))
+                {
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    static auto cc_ik_q7(const Eigen::Ref<const Matrix4x4> &tf, const FloatT *q_c) -> Array
+    {
+        const FloatT start_q7 = q_c[6];
+        Array result = cc_ik(tf, start_q7, q_c);
+        if (valid_q(result))
+        {
+            return result;
+        }
+
+        auto n_steps = std::max(q_max[6] - start_q7, start_q7 - q_min[6]) / SEARCH_STEP;
+        for (auto i = 0U; i < n_steps; ++i)
+        {
+            const FloatT step = SEARCH_STEP * i;
+            const FloatT pos = start_q7 + step;
+            if (pos <= q_max[6])
+            {
+                result = cc_ik(tf, pos, q_c);
+                if (valid_q(result))
+                {
+                    break;
+                }
+            }
+
+            const FloatT neg = start_q7 - step;
+            if (neg >= q_min[6])
+            {
+                result = cc_ik(tf, pos, q_c);
+                if (valid_q(result))
+                {
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 };
